@@ -26,7 +26,7 @@ bool Pilot::PVulkanManager::recreateSwapChain()
     m_tone_mapping_pass.updateAfterFramebufferRecreate(m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
     m_color_grading_pass.updateAfterFramebufferRecreate(m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even]);
     // anti-aliasing pass at odd framebuffer
-    m_anti_aliasing_pass.updateAfterFramebufferRecreate(m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
+    m_anti_aliasing_pass.updateAfterFramebufferRecreate(m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_sampler_odd]);
     m_combine_ui_pass.updateAfterFramebufferRecreate(m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even], m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
     m_mouse_pick_pass.recreateFramebuffer();
 

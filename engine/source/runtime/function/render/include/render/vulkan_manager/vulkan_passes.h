@@ -97,15 +97,18 @@ namespace Pilot
 
     enum
     {
-        _main_camera_pass_gbuffer_a               = 0,
-        _main_camera_pass_gbuffer_b               = 1,
-        _main_camera_pass_gbuffer_c               = 2,
-        _main_camera_pass_backup_buffer_odd       = 3,
-        _main_camera_pass_backup_buffer_even      = 4,
-        _main_camera_pass_depth                   = 5,
-        _main_camera_pass_swap_chain_image        = 6,
-        _main_camera_pass_custom_attachment_count = 5,
-        _main_camera_pass_attachment_count        = 7,
+        _main_camera_pass_gbuffer_a                 = 0,
+        _main_camera_pass_gbuffer_b                 = 1,
+        _main_camera_pass_gbuffer_c                 = 2,
+        _main_camera_pass_backup_buffer_odd         = 3,
+        _main_camera_pass_backup_buffer_even        = 4,
+        _main_camera_pass_backup_buffer_sampler_odd = 5,
+        _main_camera_pass_backup_buffer_sampler_even  = 6,
+        _main_camera_pass_depth                     = 5 + 2,
+        _main_camera_pass_swap_chain_image          = 6 + 2,
+        _main_camera_pass_custom_attachment_count   = 5,
+        _main_camera_pass_custom_sampler_count      = 2,
+        _main_camera_pass_attachment_count          = 7 + 2,
     };
 
     enum

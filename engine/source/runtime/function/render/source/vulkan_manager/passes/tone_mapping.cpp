@@ -121,23 +121,24 @@ namespace Pilot
         multisample_state_create_info.sampleShadingEnable  = VK_FALSE;
         multisample_state_create_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        VkPipelineColorBlendAttachmentState color_blend_attachment_state {};
-        color_blend_attachment_state.colorWriteMask =
+        VkPipelineColorBlendAttachmentState color_blend_attachment_state[1] {};
+        color_blend_attachment_state[0].colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        color_blend_attachment_state.blendEnable         = VK_FALSE;
-        color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-        color_blend_attachment_state.colorBlendOp        = VK_BLEND_OP_ADD;
-        color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        color_blend_attachment_state.alphaBlendOp        = VK_BLEND_OP_ADD;
+        color_blend_attachment_state[0].blendEnable         = VK_FALSE;
+        color_blend_attachment_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        color_blend_attachment_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        color_blend_attachment_state[0].colorBlendOp        = VK_BLEND_OP_ADD;
+        color_blend_attachment_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        color_blend_attachment_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        color_blend_attachment_state[0].alphaBlendOp        = VK_BLEND_OP_ADD;
+
 
         VkPipelineColorBlendStateCreateInfo color_blend_state_create_info {};
         color_blend_state_create_info.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         color_blend_state_create_info.logicOpEnable     = VK_FALSE;
         color_blend_state_create_info.logicOp           = VK_LOGIC_OP_COPY;
-        color_blend_state_create_info.attachmentCount   = 1;
-        color_blend_state_create_info.pAttachments      = &color_blend_attachment_state;
+        color_blend_state_create_info.attachmentCount   = sizeof(color_blend_attachment_state)/ sizeof(color_blend_attachment_state[0]);
+        color_blend_state_create_info.pAttachments      = &color_blend_attachment_state[0];
         color_blend_state_create_info.blendConstants[0] = 0.0f;
         color_blend_state_create_info.blendConstants[1] = 0.0f;
         color_blend_state_create_info.blendConstants[2] = 0.0f;

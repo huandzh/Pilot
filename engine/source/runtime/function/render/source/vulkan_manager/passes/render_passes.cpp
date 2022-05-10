@@ -35,7 +35,7 @@ bool Pilot::PVulkanManager::initializeRenderPass()
 
     // anti-aliasing pass at odd framebuffer
     m_anti_aliasing_pass.initialize(m_main_camera_pass.getRenderPass(),
-                                   m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
+                                    m_main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_sampler_odd]);
 
     m_ui_pass.initialize(m_main_camera_pass.getRenderPass());
 
