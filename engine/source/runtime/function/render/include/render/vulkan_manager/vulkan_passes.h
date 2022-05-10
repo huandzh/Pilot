@@ -41,6 +41,29 @@ namespace Pilot
         void setupDescriptorSet();
     };
 
+    // Add resolution data
+    struct ResolutionData {
+        glm::vec4 screen_resolution;
+        glm::vec4 editor_screen_resolution;
+    };
+
+    // Add a new pass class
+    class PAntiAliasingPass : public PRenderPassBase
+    {
+    public:
+        void initialize(VkRenderPass render_pass, VkImageView input_attachment);
+        // update resolution data using push constant
+        void updateResolutionData();
+        void draw();
+
+        void updateAfterFramebufferRecreate(VkImageView input_attachment);
+
+    private:
+        void setupDescriptorSetLayout();
+        void setupPipelines();
+        void setupDescriptorSet();
+    };
+
     class PUIPass : public PRenderPassBase
     {
     public:
@@ -92,6 +115,7 @@ namespace Pilot
         _main_camera_subpass_forward_lighting,
         _main_camera_subpass_tone_mapping,
         _main_camera_subpass_color_grading,
+        _main_camera_subpass_anti_aliasing, // add a new enum
         _main_camera_subpass_ui,
         _main_camera_subpass_combine_ui,
         _main_camera_subpass_count
@@ -136,7 +160,9 @@ namespace Pilot
 
         void initialize();
 
-        void draw(PColorGradingPass& color_grading_pass,
+        // add a new pass arg to draw
+        void draw(PAntiAliasingPass& anti_aliasing_pass,
+                PColorGradingPass& color_grading_pass,
                   PToneMappingPass&  tone_mapping_pass,
                   PUIPass&           ui_pass,
                   PCombineUIPass&    combine_ui_pass,
@@ -144,7 +170,8 @@ namespace Pilot
                   void*              ui_state);
 
         // legacy
-        void drawForward(PColorGradingPass& color_grading_pass,
+        void drawForward(PAntiAliasingPass& anti_aliasing_pass,
+                         PColorGradingPass& color_grading_pass,
                          PToneMappingPass&  tone_mapping_pass,
                          PUIPass&           ui_pass,
                          PCombineUIPass&    combine_ui_pass,

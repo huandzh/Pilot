@@ -3,6 +3,7 @@
 #include "runtime/function/render/include/render/vulkan_manager/vulkan_misc.h"
 #include "runtime/function/render/include/render/vulkan_manager/vulkan_passes.h"
 #include "runtime/function/render/include/render/vulkan_manager/vulkan_util.h"
+#include "runtime/core/base/macro.h"
 
 #include <map>
 #include <stdexcept>
@@ -23,6 +24,7 @@ namespace Pilot
 {
     void PMainCameraPass::initialize()
     {
+        LOG_DEBUG("init camera pass");
         PRenderPassBase::initialize();
         setupAttachments();
         setupRenderPass();
@@ -57,8 +59,10 @@ namespace Pilot
                                      m_p_vulkan_context->_swapchain_extent.height,
                                      _framebuffer.attachments[i].format,
                                      VK_IMAGE_TILING_OPTIMAL,
+                                    //  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                    //      VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
                                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                         VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                      _framebuffer.attachments[i].image,
                                      _framebuffer.attachments[i].mem,
@@ -273,11 +277,33 @@ namespace Pilot
         color_grading_pass.preserveAttachmentCount = 0;
         color_grading_pass.pPreserveAttachments    = NULL;
 
+        // anti aliasing pass
+        VkAttachmentReference anti_aliasing_pass_input_attachment_reference {};
+        anti_aliasing_pass_input_attachment_reference.attachment =
+            &backup_odd_color_attachment_description - attachments;
+        anti_aliasing_pass_input_attachment_reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkAttachmentReference anti_aliasing_pass_color_attachment_reference {};
+        anti_aliasing_pass_color_attachment_reference.attachment =
+            &backup_even_color_attachment_description - attachments;
+        anti_aliasing_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription& anti_aliasing_pass   = subpasses[_main_camera_subpass_anti_aliasing];
+        anti_aliasing_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        anti_aliasing_pass.inputAttachmentCount    = 1;
+        anti_aliasing_pass.pInputAttachments       = &anti_aliasing_pass_input_attachment_reference;
+        anti_aliasing_pass.colorAttachmentCount    = 1;
+        anti_aliasing_pass.pColorAttachments       = &anti_aliasing_pass_color_attachment_reference;
+        anti_aliasing_pass.pDepthStencilAttachment = NULL;
+        anti_aliasing_pass.preserveAttachmentCount = 0;
+        anti_aliasing_pass.pPreserveAttachments    = NULL;
+
+        // beware change the odd and even attachments accordingly
         VkAttachmentReference ui_pass_color_attachment_reference {};
-        ui_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
+        ui_pass_color_attachment_reference.attachment = &backup_odd_color_attachment_description - attachments;
         ui_pass_color_attachment_reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
+        uint32_t ui_pass_preserve_attachment = &backup_even_color_attachment_description - attachments;
 
         VkSubpassDescription& ui_pass   = subpasses[_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -291,10 +317,10 @@ namespace Pilot
 
         VkAttachmentReference combine_ui_pass_input_attachments_reference[2] = {};
         combine_ui_pass_input_attachments_reference[0].attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[0].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         combine_ui_pass_input_attachments_reference[1].attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[1].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference combine_ui_pass_color_attachment_reference {};
@@ -312,7 +338,8 @@ namespace Pilot
         combine_ui_pass.preserveAttachmentCount = 0;
         combine_ui_pass.pPreserveAttachments    = NULL;
 
-        VkSubpassDependency dependencies[7] = {};
+        // add new dependency for anti-aliasing
+        VkSubpassDependency dependencies[8] = {};
 
         VkSubpassDependency& deferred_lighting_pass_depend_on_shadow_map_pass = dependencies[0];
         deferred_lighting_pass_depend_on_shadow_map_pass.srcSubpass           = VK_SUBPASS_EXTERNAL;
@@ -375,20 +402,34 @@ namespace Pilot
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& ui_pass_depend_on_color_grading_pass = dependencies[5];
-        ui_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
-        ui_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_ui;
-        ui_pass_depend_on_color_grading_pass.srcStageMask =
+        VkSubpassDependency& anti_aliasing_pass_depend_on_color_grading_pass = dependencies[5];
+        anti_aliasing_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
+        anti_aliasing_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_anti_aliasing;
+        anti_aliasing_pass_depend_on_color_grading_pass.srcStageMask =
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_color_grading_pass.dstStageMask =
+        anti_aliasing_pass_depend_on_color_grading_pass.dstStageMask =
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_color_grading_pass.srcAccessMask =
+        anti_aliasing_pass_depend_on_color_grading_pass.srcAccessMask =
             VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        ui_pass_depend_on_color_grading_pass.dstAccessMask =
+        anti_aliasing_pass_depend_on_color_grading_pass.dstAccessMask =
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        ui_pass_depend_on_color_grading_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        anti_aliasing_pass_depend_on_color_grading_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
+        // anti aliasing
+        VkSubpassDependency& ui_pass_depend_on_anti_aliasing_pass = dependencies[6];
+        ui_pass_depend_on_anti_aliasing_pass.srcSubpass           = _main_camera_subpass_anti_aliasing;
+        ui_pass_depend_on_anti_aliasing_pass.dstSubpass           = _main_camera_subpass_ui;
+        ui_pass_depend_on_anti_aliasing_pass.srcStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ui_pass_depend_on_anti_aliasing_pass.dstStageMask =
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ui_pass_depend_on_anti_aliasing_pass.srcAccessMask =
+            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        ui_pass_depend_on_anti_aliasing_pass.dstAccessMask =
+            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        ui_pass_depend_on_anti_aliasing_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[7];
         combine_ui_pass_depend_on_ui_pass.srcSubpass           = _main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass           = _main_camera_subpass_combine_ui;
         combine_ui_pass_depend_on_ui_pass.srcStageMask =
@@ -2066,6 +2107,7 @@ namespace Pilot
 
     void PMainCameraPass::updateAfterFramebufferRecreate()
     {
+        LOG_DEBUG("update after framebuffer recreate");
         for (size_t i = 0; i < _framebuffer.attachments.size(); i++)
         {
             vkDestroyImage(m_p_vulkan_context->_device, _framebuffer.attachments[i].image, nullptr);
@@ -2085,7 +2127,8 @@ namespace Pilot
         setupSwapchainFramebuffers();
     }
 
-    void PMainCameraPass::draw(PColorGradingPass& color_grading_pass,
+    void PMainCameraPass::draw(PAntiAliasingPass& anti_aliasing_pass,
+                                PColorGradingPass& color_grading_pass,
                                PToneMappingPass&  tone_mapping_pass,
                                PUIPass&           ui_pass,
                                PCombineUIPass&    combine_ui_pass,
@@ -2171,6 +2214,13 @@ namespace Pilot
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
+        // TODO: use a buffer and only change after frame recreated
+        anti_aliasing_pass.updateResolutionData();
+
+        anti_aliasing_pass.draw();
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
         VkClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
         clear_attachments[0].colorAttachment             = 0;
@@ -2202,7 +2252,8 @@ namespace Pilot
         m_p_vulkan_context->_vkCmdEndRenderPass(m_command_info._current_command_buffer);
     }
 
-    void PMainCameraPass::drawForward(PColorGradingPass& color_grading_pass,
+    void PMainCameraPass::drawForward(PAntiAliasingPass& anti_aliasing_pass,
+        PColorGradingPass& color_grading_pass,
                                       PToneMappingPass&  tone_mapping_pass,
                                       PUIPass&           ui_pass,
                                       PCombineUIPass&    combine_ui_pass,
@@ -2259,6 +2310,12 @@ namespace Pilot
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
         color_grading_pass.draw();
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
+        // add anti_aliasing_pass
+        anti_aliasing_pass.updateResolutionData();
+        anti_aliasing_pass.draw();
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 

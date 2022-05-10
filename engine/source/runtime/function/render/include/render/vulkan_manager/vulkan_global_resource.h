@@ -94,8 +94,11 @@ namespace Pilot
         PIBLResourceData          getIBLTextureData(Scene* scene, class PilotRenderer* renderer);
         PColorGradingResourceData getColorGradingTextureData(Scene* scene, class PilotRenderer* renderer);
         void                      clear(PVulkanContext& context);
+        bool is_lut_valid() {return _is_lut_valid;}
+        void mark_lut_valid() {_is_lut_valid = true;}
 
     private:
+        bool _is_lut_valid = false;
         void initializeIBLSamplers(PVulkanContext& context);
         void initializeStorageBuffer(PVulkanContext& context, int frames_in_flight);
         void mapStorageBuffer(PVulkanContext& context);
