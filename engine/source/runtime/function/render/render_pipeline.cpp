@@ -24,7 +24,6 @@ namespace Pilot
         m_ui_pass                 = std::make_shared<UIPass>();
         m_combine_ui_pass         = std::make_shared<CombineUIPass>();
         m_pick_pass               = std::make_shared<PickPass>();
-        m_fxaa_pass               = std::make_shared<FXAAPass>();
 
         RenderPassCommonInfo pass_common_info;
         pass_common_info.rhi             = m_rhi;
@@ -38,7 +37,6 @@ namespace Pilot
         m_ui_pass->setCommonInfo(pass_common_info);
         m_combine_ui_pass->setCommonInfo(pass_common_info);
         m_pick_pass->setCommonInfo(pass_common_info);
-        m_fxaa_pass->setCommonInfo(pass_common_info);
 
         m_point_light_shadow_pass->initialize(nullptr);
         m_directional_light_pass->initialize(nullptr);
@@ -81,20 +79,14 @@ namespace Pilot
         CombineUIPassInitInfo combine_ui_init_info;
         combine_ui_init_info.render_pass = _main_camera_pass->getRenderPass();
         combine_ui_init_info.scene_input_attachment =
-            _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_backup_buffer_even];
-        combine_ui_init_info.ui_input_attachment =
             _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd];
+        combine_ui_init_info.ui_input_attachment =
+            _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_backup_buffer_even];
         m_combine_ui_pass->initialize(&combine_ui_init_info);
 
         PickPassInitInfo pick_init_info;
         pick_init_info.per_mesh_layout = descriptor_layouts[MainCameraPass::LayoutType::_per_mesh];
         m_pick_pass->initialize(&pick_init_info);
-
-        FXAAPassInitInfo fxaa_init_info;
-        fxaa_init_info.render_pass = _main_camera_pass->getRenderPass();
-        fxaa_init_info.input_attachment =
-            _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd];
-        m_fxaa_pass->initialize(&fxaa_init_info);
     }
 
     void RenderPipeline::forwardRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource)
@@ -120,14 +112,12 @@ namespace Pilot
         static_cast<PointLightShadowPass*>(m_point_light_shadow_pass.get())->draw();
 
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
-        FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_tone_mapping_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
         UIPass&           ui_pass            = *(static_cast<UIPass*>(m_ui_pass.get()));
         CombineUIPass&    combine_ui_pass    = *(static_cast<CombineUIPass*>(m_combine_ui_pass.get()));
 
         static_cast<MainCameraPass*>(m_main_camera_pass.get())
             ->drawForward(color_grading_pass,
-                          fxaa_pass,
                           tone_mapping_pass,
                           ui_pass,
                           combine_ui_pass,
@@ -159,14 +149,12 @@ namespace Pilot
         static_cast<PointLightShadowPass*>(m_point_light_shadow_pass.get())->draw();
 
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
-        FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
         UIPass&           ui_pass            = *(static_cast<UIPass*>(m_ui_pass.get()));
         CombineUIPass&    combine_ui_pass    = *(static_cast<CombineUIPass*>(m_combine_ui_pass.get()));
 
         static_cast<MainCameraPass*>(m_main_camera_pass.get())
             ->draw(color_grading_pass,
-                   fxaa_pass,
                    tone_mapping_pass,
                    ui_pass,
                    combine_ui_pass,
@@ -179,7 +167,6 @@ namespace Pilot
     {
         MainCameraPass&   main_camera_pass   = *(static_cast<MainCameraPass*>(m_main_camera_pass.get()));
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
-        FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
         CombineUIPass&    combine_ui_pass    = *(static_cast<CombineUIPass*>(m_combine_ui_pass.get()));
         PickPass&         pick_pass          = *(static_cast<PickPass*>(m_pick_pass.get()));
@@ -189,11 +176,9 @@ namespace Pilot
             main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
         color_grading_pass.updateAfterFramebufferRecreate(
             main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even]);
-        fxaa_pass.updateAfterFramebufferRecreate(
-            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd]);
         combine_ui_pass.updateAfterFramebufferRecreate(
-            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even],
-            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
+            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd],
+            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even]);
         pick_pass.recreateFramebuffer();
     }
     uint32_t RenderPipeline::getGuidOfPickedMesh(const Vector2& picked_uv)

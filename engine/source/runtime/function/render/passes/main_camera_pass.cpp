@@ -324,7 +324,7 @@ namespace Pilot
 
         VkAttachmentReference color_grading_pass_color_attachment_reference {};
         color_grading_pass_color_attachment_reference.attachment =
-            &post_process_odd_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         color_grading_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkSubpassDescription& color_grading_pass   = subpasses[_main_camera_subpass_color_grading];
@@ -337,29 +337,11 @@ namespace Pilot
         color_grading_pass.preserveAttachmentCount = 0;
         color_grading_pass.pPreserveAttachments    = NULL;
 
-        VkAttachmentReference fxaa_pass_input_attachment_reference {};
-        fxaa_pass_input_attachment_reference.attachment = &post_process_odd_color_attachment_description - attachments;
-        fxaa_pass_input_attachment_reference.layout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        VkAttachmentReference fxaa_pass_color_attachment_reference {};
-        fxaa_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
-        fxaa_pass_color_attachment_reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription& fxaa_pass   = subpasses[_main_camera_subpass_fxaa];
-        fxaa_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        fxaa_pass.inputAttachmentCount    = 1;
-        fxaa_pass.pInputAttachments       = &fxaa_pass_input_attachment_reference;
-        fxaa_pass.colorAttachmentCount    = 1;
-        fxaa_pass.pColorAttachments       = &fxaa_pass_color_attachment_reference;
-        fxaa_pass.pDepthStencilAttachment = NULL;
-        fxaa_pass.preserveAttachmentCount = 0;
-        fxaa_pass.pPreserveAttachments    = NULL;
-
         VkAttachmentReference ui_pass_color_attachment_reference {};
-        ui_pass_color_attachment_reference.attachment = &backup_odd_color_attachment_description - attachments;
+        ui_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
         ui_pass_color_attachment_reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        uint32_t ui_pass_preserve_attachment = &backup_even_color_attachment_description - attachments;
+        uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
 
         VkSubpassDescription& ui_pass   = subpasses[_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -373,10 +355,10 @@ namespace Pilot
 
         VkAttachmentReference combine_ui_pass_input_attachments_reference[2] = {};
         combine_ui_pass_input_attachments_reference[0].attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[0].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         combine_ui_pass_input_attachments_reference[1].attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[1].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference combine_ui_pass_color_attachment_reference {};
@@ -394,7 +376,7 @@ namespace Pilot
         combine_ui_pass.preserveAttachmentCount = 0;
         combine_ui_pass.pPreserveAttachments    = NULL;
 
-        VkSubpassDependency dependencies[8] = {};
+        VkSubpassDependency dependencies[7] = {};
 
         VkSubpassDependency& deferred_lighting_pass_depend_on_shadow_map_pass = dependencies[0];
         deferred_lighting_pass_depend_on_shadow_map_pass.srcSubpass           = VK_SUBPASS_EXTERNAL;
@@ -457,30 +439,20 @@ namespace Pilot
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& fxaa_pass_depend_on_color_grading_pass = dependencies[5];
-        fxaa_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
-        fxaa_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_fxaa;
-        fxaa_pass_depend_on_color_grading_pass.srcStageMask =
+        VkSubpassDependency& ui_pass_depend_on_color_grading_pass = dependencies[5];
+        ui_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
+        ui_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_ui;
+        ui_pass_depend_on_color_grading_pass.srcStageMask =
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        fxaa_pass_depend_on_color_grading_pass.dstStageMask =
+        ui_pass_depend_on_color_grading_pass.dstStageMask =
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        fxaa_pass_depend_on_color_grading_pass.srcAccessMask =
+        ui_pass_depend_on_color_grading_pass.srcAccessMask =
             VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        fxaa_pass_depend_on_color_grading_pass.dstAccessMask =
+        ui_pass_depend_on_color_grading_pass.dstAccessMask =
             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        ui_pass_depend_on_color_grading_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& ui_pass_depend_on_fxaa_pass = dependencies[6];
-        ui_pass_depend_on_fxaa_pass.srcSubpass           = _main_camera_subpass_fxaa;
-        ui_pass_depend_on_fxaa_pass.dstSubpass           = _main_camera_subpass_ui;
-        ui_pass_depend_on_fxaa_pass.srcStageMask =
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_fxaa_pass.dstStageMask =
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_fxaa_pass.srcAccessMask   = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        ui_pass_depend_on_fxaa_pass.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        ui_pass_depend_on_fxaa_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[7];
+        VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
         combine_ui_pass_depend_on_ui_pass.srcSubpass           = _main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass           = _main_camera_subpass_combine_ui;
         combine_ui_pass_depend_on_ui_pass.srcStageMask =
@@ -2175,7 +2147,6 @@ namespace Pilot
     }
 
     void MainCameraPass::draw(ColorGradingPass& color_grading_pass,
-                              FXAAPass&         fxaa_pass,
                               ToneMappingPass&  tone_mapping_pass,
                               UIPass&           ui_pass,
                               CombineUIPass&    combine_ui_pass,
@@ -2262,10 +2233,6 @@ namespace Pilot
 
         m_vulkan_rhi->m_vk_cmd_next_subpass(m_vulkan_rhi->m_current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
-        fxaa_pass.draw();
-
-        m_vulkan_rhi->m_vk_cmd_next_subpass(m_vulkan_rhi->m_current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
-
         VkClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
         clear_attachments[0].colorAttachment             = 0;
@@ -2281,10 +2248,10 @@ namespace Pilot
         clear_rects[0].rect.extent.width  = m_vulkan_rhi->m_swapchain_extent.width;
         clear_rects[0].rect.extent.height = m_vulkan_rhi->m_swapchain_extent.height;
         m_vulkan_rhi->m_vk_cmd_clear_attachments(m_vulkan_rhi->m_current_command_buffer,
-                                             sizeof(clear_attachments) / sizeof(clear_attachments[0]),
-                                             clear_attachments,
-                                             sizeof(clear_rects) / sizeof(clear_rects[0]),
-                                             clear_rects);
+                                                 sizeof(clear_attachments) / sizeof(clear_attachments[0]),
+                                                 clear_attachments,
+                                                 sizeof(clear_rects) / sizeof(clear_rects[0]),
+                                                 clear_rects);
 
         drawAxis();
 
@@ -2298,7 +2265,6 @@ namespace Pilot
     }
 
     void MainCameraPass::drawForward(ColorGradingPass& color_grading_pass,
-                                     FXAAPass&         fxaa_pass,
                                      ToneMappingPass&  tone_mapping_pass,
                                      UIPass&           ui_pass,
                                      CombineUIPass&    combine_ui_pass,
@@ -2357,10 +2323,6 @@ namespace Pilot
 
         m_vulkan_rhi->m_vk_cmd_next_subpass(m_vulkan_rhi->m_current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
-        fxaa_pass.draw();
-
-        m_vulkan_rhi->m_vk_cmd_next_subpass(m_vulkan_rhi->m_current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
-
         VkClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
         clear_attachments[0].colorAttachment             = 0;
@@ -2376,10 +2338,10 @@ namespace Pilot
         clear_rects[0].rect.extent.width  = m_vulkan_rhi->m_swapchain_extent.width;
         clear_rects[0].rect.extent.height = m_vulkan_rhi->m_swapchain_extent.height;
         m_vulkan_rhi->m_vk_cmd_clear_attachments(m_vulkan_rhi->m_current_command_buffer,
-                                             sizeof(clear_attachments) / sizeof(clear_attachments[0]),
-                                             clear_attachments,
-                                             sizeof(clear_rects) / sizeof(clear_rects[0]),
-                                             clear_rects);
+                                                 sizeof(clear_attachments) / sizeof(clear_attachments[0]),
+                                                 clear_attachments,
+                                                 sizeof(clear_rects) / sizeof(clear_rects[0]),
+                                                 clear_rects);
 
         drawAxis();
 
@@ -2431,8 +2393,8 @@ namespace Pilot
         }
 
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_mesh_gbuffer].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_mesh_gbuffer].pipeline);
         m_vulkan_rhi->m_vk_cmd_set_viewport(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_viewport);
         m_vulkan_rhi->m_vk_cmd_set_scissor(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_scissor);
 
@@ -2463,13 +2425,13 @@ namespace Pilot
 
             // bind per material
             m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                                   VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                   m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout,
-                                                   2,
-                                                   1,
-                                                   &material.material_descriptor_set,
-                                                   0,
-                                                   NULL);
+                                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                        m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout,
+                                                        2,
+                                                        1,
+                                                        &material.material_descriptor_set,
+                                                        0,
+                                                        NULL);
 
             // TODO: render from near to far
 
@@ -2497,10 +2459,10 @@ namespace Pilot
                                                  mesh.mesh_vertex_varying_buffer};
                     VkDeviceSize offsets[]        = {0, 0, 0};
                     m_vulkan_rhi->m_vk_cmd_bind_vertex_buffers(m_vulkan_rhi->m_current_command_buffer,
-                                                          0,
-                                                          (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
-                                                          vertex_buffers,
-                                                          offsets);
+                                                               0,
+                                                               (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
+                                                               vertex_buffers,
+                                                               offsets);
                     m_vulkan_rhi->m_vk_cmd_bind_index_buffer(
                         m_vulkan_rhi->m_current_command_buffer, mesh.mesh_index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
@@ -2616,11 +2578,11 @@ namespace Pilot
                             dynamic_offsets);
 
                         m_vulkan_rhi->m_vk_cmd_draw_indexed(m_vulkan_rhi->m_current_command_buffer,
-                                                        mesh.mesh_index_count,
-                                                        current_instance_count,
-                                                        0,
-                                                        0,
-                                                        0);
+                                                            mesh.mesh_index_count,
+                                                            current_instance_count,
+                                                            0,
+                                                            0,
+                                                            0);
                     }
                 }
             }
@@ -2635,8 +2597,8 @@ namespace Pilot
     void MainCameraPass::drawDeferredLighting()
     {
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_deferred_lighting].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_deferred_lighting].pipeline);
 
         m_vulkan_rhi->m_vk_cmd_set_viewport(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_viewport);
         m_vulkan_rhi->m_vk_cmd_set_scissor(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_scissor);
@@ -2665,13 +2627,13 @@ namespace Pilot
                                               m_descriptor_infos[_skybox].descriptor_set};
         uint32_t        dynamic_offsets[4] = {perframe_dynamic_offset, perframe_dynamic_offset, 0, 0};
         m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                               VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                               m_render_pipelines[_render_pipeline_type_deferred_lighting].layout,
-                                               0,
-                                               3,
-                                               descriptor_sets,
-                                               4,
-                                               dynamic_offsets);
+                                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                    m_render_pipelines[_render_pipeline_type_deferred_lighting].layout,
+                                                    0,
+                                                    3,
+                                                    descriptor_sets,
+                                                    4,
+                                                    dynamic_offsets);
 
         vkCmdDraw(m_vulkan_rhi->m_current_command_buffer, 3, 1, 0, 0);
     }
@@ -2715,8 +2677,8 @@ namespace Pilot
         }
 
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_mesh_lighting].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_mesh_lighting].pipeline);
         m_vulkan_rhi->m_vk_cmd_set_viewport(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_viewport);
         m_vulkan_rhi->m_vk_cmd_set_scissor(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_scissor);
 
@@ -2747,13 +2709,13 @@ namespace Pilot
 
             // bind per material
             m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                                   VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                   m_render_pipelines[_render_pipeline_type_mesh_lighting].layout,
-                                                   2,
-                                                   1,
-                                                   &material.material_descriptor_set,
-                                                   0,
-                                                   NULL);
+                                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                        m_render_pipelines[_render_pipeline_type_mesh_lighting].layout,
+                                                        2,
+                                                        1,
+                                                        &material.material_descriptor_set,
+                                                        0,
+                                                        NULL);
 
             // TODO: render from near to far
 
@@ -2781,10 +2743,10 @@ namespace Pilot
                                                  mesh.mesh_vertex_varying_buffer};
                     VkDeviceSize offsets[]        = {0, 0, 0};
                     m_vulkan_rhi->m_vk_cmd_bind_vertex_buffers(m_vulkan_rhi->m_current_command_buffer,
-                                                          0,
-                                                          (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
-                                                          vertex_buffers,
-                                                          offsets);
+                                                               0,
+                                                               (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
+                                                               vertex_buffers,
+                                                               offsets);
                     m_vulkan_rhi->m_vk_cmd_bind_index_buffer(
                         m_vulkan_rhi->m_current_command_buffer, mesh.mesh_index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
@@ -2900,11 +2862,11 @@ namespace Pilot
                             dynamic_offsets);
 
                         m_vulkan_rhi->m_vk_cmd_draw_indexed(m_vulkan_rhi->m_current_command_buffer,
-                                                        mesh.mesh_index_count,
-                                                        current_instance_count,
-                                                        0,
-                                                        0,
-                                                        0);
+                                                            mesh.mesh_index_count,
+                                                            current_instance_count,
+                                                            0,
+                                                            0,
+                                                            0);
                     }
                 }
             }
@@ -2945,16 +2907,16 @@ namespace Pilot
         }
 
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_skybox].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_skybox].pipeline);
         m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                               VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                               m_render_pipelines[_render_pipeline_type_skybox].layout,
-                                               0,
-                                               1,
-                                               &m_descriptor_infos[_skybox].descriptor_set,
-                                               1,
-                                               &perframe_dynamic_offset);
+                                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                    m_render_pipelines[_render_pipeline_type_skybox].layout,
+                                                    0,
+                                                    1,
+                                                    &m_descriptor_infos[_skybox].descriptor_set,
+                                                    1,
+                                                    &perframe_dynamic_offset);
         vkCmdDraw(m_vulkan_rhi->m_current_command_buffer, 36, 1, 0,
                   0); // 2 triangles(6 vertex) each face, 6 faces
 
@@ -2974,8 +2936,8 @@ namespace Pilot
         }
 
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_particle].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_particle].pipeline);
         m_vulkan_rhi->m_vk_cmd_set_viewport(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_viewport);
         m_vulkan_rhi->m_vk_cmd_set_scissor(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_scissor);
 
@@ -3046,14 +3008,15 @@ namespace Pilot
 
                     // bind perdrawcall
                     uint32_t dynamic_offsets[2] = {perframe_dynamic_offset, perdrawcall_dynamic_offset};
-                    m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                                           VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                           m_render_pipelines[_render_pipeline_type_particle].layout,
-                                                           0,
-                                                           1,
-                                                           &m_descriptor_infos[_particle].descriptor_set,
-                                                           2,
-                                                           dynamic_offsets);
+                    m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(
+                        m_vulkan_rhi->m_current_command_buffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        m_render_pipelines[_render_pipeline_type_particle].layout,
+                        0,
+                        1,
+                        &m_descriptor_infos[_particle].descriptor_set,
+                        2,
+                        dynamic_offsets);
 
                     vkCmdDraw(m_vulkan_rhi->m_current_command_buffer, 4, current_instance_count, 0, 0);
                 }
@@ -3098,18 +3061,18 @@ namespace Pilot
         }
 
         m_vulkan_rhi->m_vk_cmd_bind_pipeline(m_vulkan_rhi->m_current_command_buffer,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         m_render_pipelines[_render_pipeline_type_axis].pipeline);
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             m_render_pipelines[_render_pipeline_type_axis].pipeline);
         m_vulkan_rhi->m_vk_cmd_set_viewport(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_viewport);
         m_vulkan_rhi->m_vk_cmd_set_scissor(m_vulkan_rhi->m_current_command_buffer, 0, 1, &m_vulkan_rhi->m_scissor);
         m_vulkan_rhi->m_vk_cmd_bind_descriptor_sets(m_vulkan_rhi->m_current_command_buffer,
-                                               VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                               m_render_pipelines[_render_pipeline_type_axis].layout,
-                                               0,
-                                               1,
-                                               &m_descriptor_infos[_axis].descriptor_set,
-                                               1,
-                                               &perframe_dynamic_offset);
+                                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                    m_render_pipelines[_render_pipeline_type_axis].layout,
+                                                    0,
+                                                    1,
+                                                    &m_descriptor_infos[_axis].descriptor_set,
+                                                    1,
+                                                    &perframe_dynamic_offset);
 
         m_axis_storage_buffer_object.selected_axis = m_selected_axis;
         m_axis_storage_buffer_object.model_matrix  = m_visiable_nodes.p_axis_node->model_matrix;
@@ -3119,24 +3082,24 @@ namespace Pilot
                                      m_visiable_nodes.p_axis_node->ref_mesh->mesh_vertex_varying_buffer};
         VkDeviceSize offsets[]        = {0, 0, 0};
         m_vulkan_rhi->m_vk_cmd_bind_vertex_buffers(m_vulkan_rhi->m_current_command_buffer,
-                                              0,
-                                              (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
-                                              vertex_buffers,
-                                              offsets);
+                                                   0,
+                                                   (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
+                                                   vertex_buffers,
+                                                   offsets);
         m_vulkan_rhi->m_vk_cmd_bind_index_buffer(m_vulkan_rhi->m_current_command_buffer,
-                                            m_visiable_nodes.p_axis_node->ref_mesh->mesh_index_buffer,
-                                            0,
-                                            VK_INDEX_TYPE_UINT16);
+                                                 m_visiable_nodes.p_axis_node->ref_mesh->mesh_index_buffer,
+                                                 0,
+                                                 VK_INDEX_TYPE_UINT16);
         (*reinterpret_cast<AxisStorageBufferObject*>(reinterpret_cast<uintptr_t>(
             m_global_render_resource->_storage_buffer._axis_inefficient_storage_buffer_memory_pointer))) =
             m_axis_storage_buffer_object;
 
         m_vulkan_rhi->m_vk_cmd_draw_indexed(m_vulkan_rhi->m_current_command_buffer,
-                                        m_visiable_nodes.p_axis_node->ref_mesh->mesh_index_count,
-                                        1,
-                                        0,
-                                        0,
-                                        0);
+                                            m_visiable_nodes.p_axis_node->ref_mesh->mesh_index_count,
+                                            1,
+                                            0,
+                                            0,
+                                            0);
 
         if (m_vulkan_rhi->isDebugLabelEnabled())
         {

@@ -4,7 +4,6 @@
 
 #include "runtime/function/render/passes/color_grading_pass.h"
 #include "runtime/function/render/passes/combine_ui_pass.h"
-#include "runtime/function/render/passes/fxaa_pass.h"
 #include "runtime/function/render/passes/tone_mapping_pass.h"
 #include "runtime/function/render/passes/ui_pass.h"
 
@@ -54,14 +53,12 @@ namespace Pilot
         void preparePassData(std::shared_ptr<RenderResourceBase> render_resource) override final;
 
         void draw(ColorGradingPass& color_grading_pass,
-                  FXAAPass&         fxaa_pass,
                   ToneMappingPass&  tone_mapping_pass,
                   UIPass&           ui_pass,
                   CombineUIPass&    combine_ui_pass,
                   uint32_t          current_swapchain_image_index);
 
         void drawForward(ColorGradingPass& color_grading_pass,
-                         FXAAPass&         fxaa_pass,
                          ToneMappingPass&  tone_mapping_pass,
                          UIPass&           ui_pass,
                          CombineUIPass&    combine_ui_pass,
