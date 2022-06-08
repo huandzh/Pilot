@@ -21,12 +21,13 @@ namespace Pilot
             _jump_end_from_walk_run,
             _count
         };
-        
+
         States m_state {States::_idle};
 
     public:
         AnimationFSM();
         bool        update(const json11::Json::object& signals);
         std::string getCurrentClipBaseName() const;
+        std::string getCurrentStateName() const;
     };
 } // namespace Pilot

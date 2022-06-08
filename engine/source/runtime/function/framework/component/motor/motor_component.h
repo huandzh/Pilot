@@ -13,6 +13,12 @@ namespace Pilot
         jumping
     };
 
+    enum class MoveState : unsigned char
+    {
+        idle,
+        moving,
+    };
+
     enum class JumpState : unsigned char
     {
         idle,
@@ -60,6 +66,7 @@ namespace Pilot
 
         MotorState m_motor_state {MotorState::moving};
         JumpState  m_jump_state {JumpState::idle};
+        MoveState  m_move_state {MoveState::idle};
 
         ControllerType m_controller_type {ControllerType::none};
         Controller*    m_controller {nullptr};

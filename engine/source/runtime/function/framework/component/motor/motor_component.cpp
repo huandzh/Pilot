@@ -47,17 +47,14 @@ namespace Pilot
         }
     }
 
-    void MotorComponent::tick(float delta_time)
-    {
-        tickPlayerMotor(delta_time);
-    }
+    void MotorComponent::tick(float delta_time) { tickPlayerMotor(delta_time); }
 
     void MotorComponent::tickPlayerMotor(float delta_time)
     {
         if (!m_parent_object.lock())
             return;
 
-        std::shared_ptr<Level>     current_level     = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();
+        std::shared_ptr<Level> current_level = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();
         std::shared_ptr<Character> current_character = current_level->getCurrentActiveCharacter().lock();
         if (current_character == nullptr)
             return;
@@ -87,7 +84,8 @@ namespace Pilot
             m_parent_object.lock()->tryGetComponent<AnimationComponent>("AnimationComponent");
         if (animation_component != nullptr)
         {
-            animation_component->updateSignal("speed", m_target_position.distance(transform_component->getPosition()) / delta_time);
+            animation_component->updateSignal(
+                "speed", m_target_position.distance(transform_component->getPosition()) / delta_time);
             animation_component->updateSignal("jumping", m_jump_state != JumpState::idle);
         }
     }
@@ -146,9 +144,9 @@ namespace Pilot
         {
             if ((unsigned int)GameCommand::jump & command)
             {
-                m_jump_state                    = JumpState::rising;
-                m_vertical_move_speed           = Math::sqrt(m_motor_res.m_jump_height * 2 * gravity);
-                m_jump_horizontal_speed_ratio   = m_move_speed_ratio;
+                m_jump_state                  = JumpState::rising;
+                m_vertical_move_speed         = Math::sqrt(m_motor_res.m_jump_height * 2 * gravity);
+                m_jump_horizontal_speed_ratio = m_move_speed_ratio;
             }
             else
             {
@@ -172,6 +170,8 @@ namespace Pilot
             Vector3 forward_dir = object_rotation * Vector3::NEGATIVE_UNIT_Y;
             Vector3 left_dir    = object_rotation * Vector3::UNIT_X;
 
+            m_move_state = MoveState::idle;
+
             if (command > 0)
             {
                 m_desired_horizontal_move_direction = Vector3::ZERO;
@@ -180,24 +180,32 @@ namespace Pilot
             if ((unsigned int)GameCommand::forward & command)
             {
                 m_desired_horizontal_move_direction += forward_dir;
+                m_move_state = MoveState::moving;
             }
 
             if ((unsigned int)GameCommand::backward & command)
             {
                 m_desired_horizontal_move_direction -= forward_dir;
+                m_move_state = MoveState::moving;
             }
 
             if ((unsigned int)GameCommand::left & command)
             {
                 m_desired_horizontal_move_direction += left_dir;
+                m_move_state = MoveState::moving;
             }
 
             if ((unsigned int)GameCommand::right & command)
             {
                 m_desired_horizontal_move_direction -= left_dir;
+                m_move_state = MoveState::moving;
             }
 
             m_desired_horizontal_move_direction.normalise();
+
+            AnimationComponent* animation_component =
+                m_parent_object.lock()->tryGetComponent<AnimationComponent>("AnimationComponent");
+            animation_component->updateSignal("stop_moving", m_move_state == MoveState::idle);
         }
     }
 
@@ -220,7 +228,8 @@ namespace Pilot
                 final_position = current_position + m_desired_displacement;
                 break;
             case ControllerType::physics:
-                final_position = m_controller->move(current_position, m_desired_displacement);
+                final_position =
+                    m_controller->move(current_position, m_desired_displacement, m_jump_state != JumpState::idle);
                 break;
             default:
                 final_position = current_position;

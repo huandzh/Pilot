@@ -26,6 +26,8 @@
 
 #ifdef NDEBUG
 #define ASSERT(statement)
+#define DEBUG_LOG_DEBUG(...)
 #else
+#define DEBUG_LOG_DEBUG LOG_DEBUG
 #define ASSERT(statement) assert(statement)
 #endif

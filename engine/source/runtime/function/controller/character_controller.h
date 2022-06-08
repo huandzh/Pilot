@@ -19,7 +19,7 @@ namespace Pilot
     public:
         virtual ~Controller() = default;
 
-        virtual Vector3 move(const Vector3& current_position, const Vector3& displacement) = 0;
+        virtual Vector3 move(const Vector3& current_position, const Vector3& displacement, const bool& is_jumping) = 0;
 
         bool isTouchGround() const { return m_is_touch_ground; }
 
@@ -32,7 +32,7 @@ namespace Pilot
     public:
         CharacterController(const Capsule& capsule);
 
-        Vector3 move(const Vector3& current_position, const Vector3& displacement) override;
+        Vector3 move(const Vector3& current_position, const Vector3& displacement, const bool& is_jumping) override;
 
     private:
         Capsule        m_capsule;
