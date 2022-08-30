@@ -109,6 +109,20 @@
         },
         {
             "$context": {
+                "status_res": {
+                    "hitpoints": 100.0,
+                    "max_hitpoints": 100.0,
+                    "stamina": 100.0,
+                    "max_stamina": 100.0,
+                    "min_stamina": 0.0,
+                    "stamina_rate": 40.0,
+                    "stamina_recover_modifier": 0.2
+                }
+            },
+            "$typeName": "StatusComponent"
+        },
+        {
+            "$context": {
                 "camera_res": {
                     "parameter": {
                         "$context": {

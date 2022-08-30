@@ -1,5 +1,6 @@
 #include "runtime/function/framework/component/motor/motor_component.h"
 
+#include "function/framework/component/status/status_component.h"
 #include "runtime/core/base/macro.h"
 
 #include "runtime/function/character/character.h"
@@ -128,7 +129,10 @@ namespace Piccolo
 
         if (m_jump_state == JumpState::idle)
         {
-            if ((unsigned int)GameCommand::jump & command)
+            const StatusComponent* status_component = m_parent_object.lock()->tryGetComponentConst(StatusComponent);
+
+            const bool is_out_of_stamina = status_component->getIsOutOfStamina();
+            if (((unsigned int)GameCommand::jump & command) && !is_out_of_stamina)
             {
                 m_jump_state                  = JumpState::rising;
                 m_vertical_move_speed         = Math::sqrt(m_motor_res.m_jump_height * 2 * gravity);

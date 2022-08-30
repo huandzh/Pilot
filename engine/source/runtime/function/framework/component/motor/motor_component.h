@@ -38,6 +38,7 @@ namespace Piccolo
 
         float getSpeedRatio() const { return m_move_speed_ratio; }
         bool  getIsMoving() const { return m_is_moving; }
+        bool  getIsJumpingUp() const { return m_jump_state == JumpState::rising; }
 
     private:
         void calculatedDesiredHorizontalMoveSpeed(unsigned int command, float delta_time);
